@@ -287,6 +287,7 @@ class AlertItem(BaseModel):
 class AlertsResponse(BaseModel):
     """Full payload returned by GET /alerts."""
     asin: str
+    seller_id: Optional[str] = None
     total_active: int = 0    # count of unread alerts
     alerts: List[AlertItem] = []
 

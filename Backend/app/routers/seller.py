@@ -94,23 +94,24 @@ async def get_seller_directory(
 
     sellers = sellers_query.all()
 
-    region_map = {
-        "11": "North", "12": "North", "13": "North", "14": "North",
-        "40": "West", "41": "West", "42": "West",
-        "56": "South", "57": "South",
-        "60": "South",
-        "70": "East", "71": "East",
-    }
+    # Tamil Nadu pincode → sub-region
+    TN_PINCODE_REGION = {
+    "600": ("North TN", "Chennai, TN"),
+    "601": ("North TN", "Chennai, TN"),
+    "602": ("North TN", "Chennai, TN"),
 
-    # Location names for major cities
-    city_map = {
-        "40": "Mumbai, MH",
-        "41": "Pune, MH",
-        "11": "Delhi, DL",
-        "56": "Bangalore, KA",
-        "60": "Chennai, TN",
-        "70": "Kolkata, WB",
-    }
+    "641": ("West TN", "Coimbatore, TN"),
+    "638": ("West TN", "Erode, TN"),
+    "636": ("West TN", "Salem, TN"),
+
+    "625": ("South TN", "Madurai, TN"),
+    "627": ("South TN", "Tirunelveli, TN"),
+    "628": ("South TN", "Thoothukudi, TN"),
+
+    "620": ("Central TN", "Trichy, TN"),
+
+    "630": ("South-East TN", "Sivakasi, TN"),
+}
 
     results = []
     for seller in sellers:
@@ -120,14 +121,13 @@ async def get_seller_directory(
 
         seller_region = None
         seller_location = None
+
         for pc in seller_pincodes:
-            if pc.pincode and len(pc.pincode) >= 2:
-                prefix = pc.pincode[:2]
-                if prefix in region_map:
-                    seller_region = region_map[prefix]
-                if prefix in city_map:
-                    seller_location = city_map[prefix]
-                break
+            if pc.pincode and len(pc.pincode) >= 3:
+                prefix = pc.pincode[:3]  # use first 3 digits for TN
+                if prefix in TN_PINCODE_REGION:
+                    seller_region, seller_location = TN_PINCODE_REGION[prefix]
+                    break
 
         if region and seller_region != region:
             continue

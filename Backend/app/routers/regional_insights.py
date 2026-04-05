@@ -10,48 +10,59 @@ from app.models import AsinRegistry, CurrentPrices, SellerPrices
 from app.schemas import RegionData, RegionalInsightsResponse, RegionWeeklyPoint
 
 # ---------------------------------------------------------------------------
-# State-code → region mapping (inline — no external utils dependency)
+# Tamil Nadu pincode prefix → (sub-region key, display city)
 # ---------------------------------------------------------------------------
-_STATE_REGION: dict[str, str] = {
-    "DL": "North", "UP": "North", "HR": "North", "PB": "North",
-    "HP": "North", "UK": "North", "JK": "North", "RJ": "North",
-    "KA": "South", "TN": "South", "KL": "South", "AP": "South",
-    "TG": "South", "PY": "South",
-    "WB": "East",  "OR": "East",  "BR": "East",  "JH": "East",
-    "AS": "East",  "NL": "East",  "MN": "East",  "TR": "East",
-    "MH": "West",  "GJ": "West",  "MP": "West",  "CG": "West",  "GA": "West",
+TN_PINCODE_REGION: dict[str, tuple[str, str]] = {
+    "600": ("North TN", "Chennai, TN"),
+    "601": ("North TN", "Chennai, TN"),
+    "602": ("North TN", "Chennai, TN"),
+
+    "641": ("West TN",  "Coimbatore, TN"),
+    "638": ("West TN",  "Erode, TN"),
+    "636": ("West TN",  "Salem, TN"),
+
+    "625": ("South TN", "Madurai, TN"),
+    "627": ("South TN", "Tirunelveli, TN"),
+    "628": ("South TN", "Thoothukudi, TN"),
+
+    "620": ("Central TN",     "Trichy, TN"),
+
+    "630": ("South-East TN",  "Sivakasi, TN"),
 }
 
 
-def derive_region(location: str | None) -> str | None:
-    if not location:
+def derive_region(pincode: str | None) -> str | None:
+    """Return the sub-region key for a given pincode, or None if unknown."""
+    if not pincode or len(pincode) < 3:
         return None
-    parts = location.rsplit(",", 1)
-    if len(parts) == 2:
-        return _STATE_REGION.get(parts[1].strip().upper())
-    return None
+    return TN_PINCODE_REGION.get(pincode[:3], (None, None))[0]
+
 
 router = APIRouter(prefix="/regional-insights", tags=["Regional Insights"])
 
 # ---------------------------------------------------------------------------
-# Static metadata per region
+# Static metadata per TN sub-region
 # ---------------------------------------------------------------------------
 _REGION_META: dict[str, dict] = {
-    "North": {
-        "display_name": "North India",
-        "cities": ["Delhi", "Chandigarh", "Lucknow", "Jaipur"],
+    "North TN": {
+        "display_name": "North TN",
+        "cities": ["Chennai", "Tiruvallur", "Kanchipuram"],
     },
-    "South": {
-        "display_name": "South India",
-        "cities": ["Bangalore", "Chennai", "Hyderabad", "Kochi"],
+    "West TN": {
+        "display_name": "West TN",
+        "cities": ["Coimbatore", "Erode", "Salem"],
     },
-    "West": {
-        "display_name": "West India",
-        "cities": ["Mumbai", "Pune", "Ahmedabad", "Surat"],
+    "South TN": {
+        "display_name": "South TN",
+        "cities": ["Madurai", "Tirunelveli", "Thoothukudi"],
     },
-    "East": {
-        "display_name": "East India",
-        "cities": ["Kolkata", "Bhubaneswar", "Patna", "Guwahati"],
+    "Central TN": {
+        "display_name": "Central TN",
+        "cities": ["Trichy", "Thanjavur", "Karur"],
+    },
+    "South-East TN": {
+        "display_name": "South-East TN",
+        "cities": ["Sivakasi", "Virudhunagar", "Ramanathapuram"],
     },
 }
 
@@ -60,7 +71,7 @@ _DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
 # =============================================================================
 # GET /regional-insights?asin=B08XYZ
-# Returns region-level pricing stats + weekly trend for all 4 regions
+# Returns TN sub-region level pricing stats + weekly trend
 # =============================================================================
 @router.get("/", status_code=status.HTTP_200_OK, response_model=RegionalInsightsResponse)
 async def get_regional_insights(
@@ -86,27 +97,26 @@ async def get_regional_insights(
     )
 
     # ------------------------------------------------------------------
-    # 2. Build seller_id → region map from CurrentPrices (has formatted
-    #    seller_name like "QuickShip India, MH")
+    # 2. Build seller_id → region map from CurrentPrices.pincode
     # ------------------------------------------------------------------
     all_current = db.query(CurrentPrices).filter(CurrentPrices.asin == asin).all()
     seller_region_map: dict[str, str] = {}
     for row in all_current:
-        reg = derive_region(row.seller_name)
+        reg = derive_region(row.pincode)
         if reg and row.seller_id:
             seller_region_map[row.seller_id] = reg
 
     # ------------------------------------------------------------------
-    # 3. Current snapshot — group CurrentPrices by region
+    # 3. Current snapshot — group CurrentPrices by TN sub-region
     # ------------------------------------------------------------------
     region_prices: dict[str, list[float]] = defaultdict(list)
     for row in all_current:
-        reg = derive_region(row.seller_name)
+        reg = derive_region(row.pincode)
         if reg and row.price is not None:
             region_prices[reg].append(float(row.price))
 
     # ------------------------------------------------------------------
-    # 4. Previous-week prices — for price_change_pct card badge
+    # 4. Previous-week prices — for price_change_pct badge
     # ------------------------------------------------------------------
     now = datetime.utcnow()
     week_ago = now - timedelta(days=7)
@@ -124,12 +134,12 @@ async def get_regional_insights(
 
     prev_region_prices: dict[str, list[float]] = defaultdict(list)
     for row in prev_week_rows:
-        reg = seller_region_map.get(row.seller_id) or derive_region(row.seller_name)
+        reg = seller_region_map.get(row.seller_id) or derive_region(row.pincode)
         if reg and row.price is not None:
             prev_region_prices[reg].append(float(row.price))
 
     # ------------------------------------------------------------------
-    # 5. Weekly trend (last 7 days) — group by region + day-of-week
+    # 5. Weekly trend (last 7 days) — group by sub-region + day-of-week
     # ------------------------------------------------------------------
     weekly_rows = (
         db.query(SellerPrices)
@@ -137,18 +147,17 @@ async def get_regional_insights(
         .all()
     )
 
-    # region → { weekday_int → [prices] }
     region_day_prices: dict[str, dict[int, list[float]]] = {
         r: defaultdict(list) for r in _REGION_META
     }
     for row in weekly_rows:
-        reg = seller_region_map.get(row.seller_id) or derive_region(row.seller_name)
+        reg = seller_region_map.get(row.seller_id) or derive_region(row.pincode)
         if reg and reg in region_day_prices and row.price is not None:
             weekday = row.scraped_at.weekday()  # 0=Mon … 6=Sun
             region_day_prices[reg][weekday].append(float(row.price))
 
     # ------------------------------------------------------------------
-    # 6. Assemble RegionData for all 4 regions
+    # 6. Assemble RegionData for all TN sub-regions
     # ------------------------------------------------------------------
     regions: list[RegionData] = []
     for reg, meta in _REGION_META.items():
@@ -159,7 +168,7 @@ async def get_regional_insights(
         lowest_price = round(min(prices), 2) if prices else None
         seller_count = len({
             row.seller_id for row in all_current
-            if derive_region(row.seller_name) == reg
+            if derive_region(row.pincode) == reg
         })
 
         # Price change vs previous week

@@ -91,7 +91,7 @@ export default function App() {
       case "reprice":
         return <RepriceEngine rules={rules} onAddRule={addRule} onDeleteRule={deleteRule} asin={activeAsin} sellerId={sellerId} onApplyPrice={setRecommendedPriceData} repriceConfig={repriceConfig} setRepriceConfig={setRepriceConfig} />;
       case "regions":
-        return <RegionalInsights />;
+        return <RegionalInsights asin={activeAsin} />;
       case "alerts":
         return <AlertsCenter alerts={alerts} onMarkRead={markRead} onMarkAllRead={markAllRead} />;
       case "settings":
