@@ -93,15 +93,14 @@ class PriceDataResponse(BaseModel):
 # Apply Price Request
 class ApplyPriceRequest(BaseModel):
     asin: str
+    seller_id: str
     price: float
-
-
-# Automated Rules
+    strategy_used: Optional[str] = None
 class RepriceRuleCreate(BaseModel):
     name: str
     asin: str
     strategy: str  # competitive, margin-first, midpoint
-    #min_margin: Optional[float] = 5.0
+    min_margin: Optional[float] = 12
     min_price: Optional[float] = None
     max_price: Optional[float] = None
 

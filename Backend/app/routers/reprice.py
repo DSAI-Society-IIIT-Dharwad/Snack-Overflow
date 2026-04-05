@@ -73,8 +73,27 @@ async def apply_reprice(request: ApplyPriceRequest, db: Session = Depends(get_db
     if not asin_record:
         raise HTTPException(status_code=404, detail=f"ASIN {request.asin} not found")
 
-    # TODO: Integrate with Amazon SP-API to actually update the listing
-    # For hackathon demo, we just confirm the price was received
+    # Update CurrentPrices database tracking for your seller
+    current_price_record = db.query(CurrentPrices).filter(
+        CurrentPrices.asin == request.asin,
+        CurrentPrices.seller_id == request.seller_id
+    ).first()
+
+    if current_price_record:
+        # Update the price for your specific product listing
+        current_price_record.price = request.price
+    else:
+        # Creates your initial competitor listing automatically if you just added the ASIN!
+        new_record = CurrentPrices(
+            asin=request.asin,
+            seller_id=request.seller_id,
+            seller_name="Your Store",
+            price=request.price,
+            fba_status="FBA"
+        )
+        db.add(new_record)
+        
+    db.commit()
 
     return {
         "success": True,
