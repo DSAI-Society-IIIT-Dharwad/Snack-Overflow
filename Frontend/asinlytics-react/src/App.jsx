@@ -22,6 +22,8 @@ export default function App() {
   const [asins, setAsins] = useState(INITIAL_ASINS);
   const [rules, setRules] = useState(INITIAL_RULES);
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeAsin, setActiveAsin] = useState("B08XYZ2");
+  const [sellerId, setSellerId] = useState("SELLER_12345");
 
   const alertCount = alerts.filter((a) => !a.read).length;
 
@@ -49,12 +51,13 @@ export default function App() {
     setRules((prev) => prev.filter((_, i) => i !== index));
   }
 
-  function renderPage() {
+ function renderPage() {
     switch (page) {
       case "dashboard":
         return (
           <Dashboard
-            sellers={SELLERS}
+            asin={activeAsin}             // <--- Add your dynamic ASIN state or variable here
+            sellerId={sellerId}    // <--- Add your dynamic Seller ID state or variable here
             alerts={alerts}
             onNav={setPage}
             onMarkRead={markRead}
