@@ -45,22 +45,19 @@ export default function Dashboard({ sellers, alerts, onNav, onMarkRead, onMarkAl
   const [sellerFilter, setSellerFilter] = useState("all");
   const toast = useToast();
 
-  const unreadCount = alerts.filter((a) => !a.read).length;
+  const unreadCount = alerts.filter((a) => !a.is_read).length;
 
   const filteredSellers = sellerFilter === "all"
     ? sellers
-    : sellers.filter((s) => s.type === sellerFilter);
+    : sellers.filter((s) => s.fba_status === sellerFilter);
 
   const displayedSellers = searchQuery
     ? filteredSellers.filter(
         (s) =>
-          s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          s.seller_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
           s.region.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : filteredSellers;
-
-  const minPrice = Math.min(...sellers.map((s) => s.price));
-  const maxPrice = Math.max(...sellers.map((s) => s.price));
 
   return (
     <div className="page-content">
@@ -166,28 +163,24 @@ export default function Dashboard({ sellers, alerts, onNav, onMarkRead, onMarkAl
                 <tr><th>Seller</th><th>Price</th><th>Type</th><th>Region</th><th>Rel.</th></tr>
               </thead>
               <tbody id="stbody">
-                {displayedSellers.map((s) => {
-                  const pct = maxPrice === minPrice ? 100 : Math.round(((s.price - minPrice) / (maxPrice - minPrice)) * 100);
-                  const isLow = s.price === minPrice;
-                  return (
-                    <tr key={s.name} style={{ cursor: "pointer" }}>
-                      <td><div className="sn">{s.name}</div><div className="sl">📍 {s.loc}</div></td>
-                      <td>
-                        <div className="pv" style={{ color: isLow ? "var(--green)" : "var(--text)" }}>
-                          ₹{s.price.toLocaleString("en-IN")}
-                        </div>
-                        {isLow && <div style={{ fontSize: "0.6rem", color: "var(--green)", fontFamily: "var(--font-m)" }}>LOWEST</div>}
-                      </td>
-                      <td><span className={`tag t-${s.type.toLowerCase()}`}>{s.type}</span></td>
-                      <td style={{ color: "var(--muted2)", fontSize: "0.78rem" }}>{s.region}</td>
-                      <td style={{ minWidth: "70px" }}>
-                        <div className="pb-bg">
-                          <div className="pb-fill" style={{ width: `${100 - pct}%`, background: isLow ? "var(--green)" : "var(--blue)" }}></div>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {displayedSellers.map((s) => (
+                  <tr key={s.seller_name} style={{ cursor: "pointer" }}>
+                    <td><div className="sn">{s.seller_name}</div><div className="sl">📍 {s.location}</div></td>
+                    <td>
+                      <div className="pv" style={{ color: s.is_lowest ? "var(--green)" : "var(--text)" }}>
+                        ₹{s.price.toLocaleString("en-IN")}
+                      </div>
+                      {s.is_lowest && <div style={{ fontSize: "0.6rem", color: "var(--green)", fontFamily: "var(--font-m)" }}>LOWEST</div>}
+                    </td>
+                    <td><span className={`tag t-${s.fba_status.toLowerCase()}`}>{s.fba_status}</span></td>
+                    <td style={{ color: "var(--muted2)", fontSize: "0.78rem" }}>{s.region}</td>
+                    <td style={{ minWidth: "70px" }}>
+                      <div className="pb-bg">
+                        <div className="pb-fill" style={{ width: `${s.relevance_score}%`, background: s.is_lowest ? "var(--green)" : "var(--blue)" }}></div>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
@@ -203,14 +196,14 @@ export default function Dashboard({ sellers, alerts, onNav, onMarkRead, onMarkAl
           </div>
           <div className="pb" id="alertsmini">
             {alerts.slice(0, 4).length ? alerts.slice(0, 4).map((a) => (
-              <div key={a.id} className={`al${a.read ? " read" : ""}`} onClick={() => onMarkRead(a.id)}>
+              <div key={a.id} className={`al${a.is_read ? " read" : ""}`} onClick={() => onMarkRead(a.id)}>
                 <div className="al-icon">{a.icon}</div>
                 <div className="al-body">
                   <div className="al-title">{a.title}</div>
-                  <div className="al-desc">{a.desc}</div>
-                  <div className="al-time">{a.time}{a.read ? " · Read" : ""}</div>
+                  <div className="al-desc">{a.message}</div>
+                  <div className="al-time">{a.detected_at}{a.is_read ? " · Read" : ""}</div>
                 </div>
-                <span className={`al-sev s${a.sev.charAt(0)}`}>{a.sev.toUpperCase()}</span>
+                <span className={`al-sev s${a.severity.charAt(0)}`}>{a.severity.toUpperCase()}</span>
               </div>
             )) : <div style={{ textAlign: "center", color: "var(--muted)", padding: "2rem", fontSize: "0.85rem" }}>✓ No alerts</div>}
           </div>

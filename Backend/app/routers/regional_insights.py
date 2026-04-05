@@ -8,28 +8,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import AsinRegistry, CurrentPrices, SellerPrices
 from app.schemas import RegionData, RegionalInsightsResponse, RegionWeeklyPoint
-
-# ---------------------------------------------------------------------------
-# State-code → region mapping (inline — no external utils dependency)
-# ---------------------------------------------------------------------------
-_STATE_REGION: dict[str, str] = {
-    "DL": "North", "UP": "North", "HR": "North", "PB": "North",
-    "HP": "North", "UK": "North", "JK": "North", "RJ": "North",
-    "KA": "South", "TN": "South", "KL": "South", "AP": "South",
-    "TG": "South", "PY": "South",
-    "WB": "East",  "OR": "East",  "BR": "East",  "JH": "East",
-    "AS": "East",  "NL": "East",  "MN": "East",  "TR": "East",
-    "MH": "West",  "GJ": "West",  "MP": "West",  "CG": "West",  "GA": "West",
-}
-
-
-def derive_region(location: str | None) -> str | None:
-    if not location:
-        return None
-    parts = location.rsplit(",", 1)
-    if len(parts) == 2:
-        return _STATE_REGION.get(parts[1].strip().upper())
-    return None
+from app.utils import derive_region
 
 router = APIRouter(prefix="/regional-insights", tags=["Regional Insights"])
 
