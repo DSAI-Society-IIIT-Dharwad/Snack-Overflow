@@ -82,9 +82,9 @@ export default function App() {
       case "asin":
         return <AsinTracker asins={asins} onAdd={addAsin} onDelete={deleteAsin} />;
       case "sellers":
-        return <SellerIntel sellers={SELLERS} />;
+        return <SellerIntel asin={activeAsin} />;
       case "trends":
-        return <PriceTrends />;
+        return <PriceTrends asin={activeAsin} sellerId={sellerId} />;
       case "reprice":
         return <RepriceEngine rules={rules} onAddRule={addRule} onDeleteRule={deleteRule} />;
       case "regions":
