@@ -2,8 +2,9 @@ import React, { useState } from "react";
 import Modal from "../components/Modal";
 import { useToast } from "../context/ToastContext";
 
-export default function RuleModal({ open, onClose, onSubmit }) {
+export default function RuleModal({ open, onClose, onSubmit, defaultAsin = "" }) {
   const [name, setName] = useState("");
+  const [targetAsin, setTargetAsin] = useState(defaultAsin);
   const [strategy, setStrategy] = useState("Competitive");
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
@@ -12,8 +13,9 @@ export default function RuleModal({ open, onClose, onSubmit }) {
 
     function submit() {
     if (!name.trim()) { toast("Enter a rule name", "error"); return; }
-    onSubmit({ name: name.trim(), asin: "All", strategy, minMargin, lastRun: "Never" });
-    setName(""); setStrategy("Competitive"); setMinPrice(""); setMaxPrice(""); setMinMargin("");
+    if (!targetAsin.trim()) { toast("An ASIN is required", "error"); return; }
+    onSubmit({ name: name.trim(), asin: targetAsin.trim().toUpperCase(), strategy, minMargin, minPrice, maxPrice });
+    setName(""); setTargetAsin(""); setStrategy("Competitive"); setMinPrice(""); setMaxPrice(""); setMinMargin("");
   }
 
 
@@ -29,10 +31,17 @@ export default function RuleModal({ open, onClose, onSubmit }) {
         </>
       }
     >
-      <div className="fg">
-        <label className="fl">Rule Name</label>
-        <input className="fi" id="rname" placeholder="Beat Lowest FBA"
-          value={name} onChange={(e) => setName(e.target.value)} />
+      <div className="frow">
+        <div className="fg">
+          <label className="fl">Rule Name</label>
+          <input className="fi" id="rname" placeholder="Beat Lowest FBA"
+            value={name} onChange={(e) => setName(e.target.value)} />
+        </div>
+        <div className="fg">
+          <label className="fl">Target ASIN</label>
+          <input className="fi" id="rasin" placeholder="B08XYZ"
+            value={targetAsin} onChange={(e) => setTargetAsin(e.target.value)} />
+        </div>
       </div>
       <div className="fg">
         <label className="fl">Strategy</label>

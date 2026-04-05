@@ -24,6 +24,8 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeAsin, setActiveAsin] = useState("");
   const [sellerId, setSellerId] = useState("");
+  const [recommendedPriceData, setRecommendedPriceData] = useState(null);
+  const [repriceConfig, setRepriceConfig] = useState({ cost: 1950, margin: 12, strategy: "margin" });
 
   const DUMMY_USER_ID = "00000000-0000-0000-0000-000000000000";
 
@@ -73,6 +75,7 @@ export default function App() {
             asin={activeAsin}             // <--- Add your dynamic ASIN state or variable here
             sellerId={sellerId}    // <--- Add your dynamic Seller ID state or variable here
             alerts={alerts}
+            recommendedPriceData={recommendedPriceData}
             onNav={setPage}
             onMarkRead={markRead}
             onMarkAllRead={markAllRead}
@@ -86,7 +89,7 @@ export default function App() {
       case "trends":
         return <PriceTrends asin={activeAsin} sellerId={sellerId} />;
       case "reprice":
-        return <RepriceEngine rules={rules} onAddRule={addRule} onDeleteRule={deleteRule} />;
+        return <RepriceEngine rules={rules} onAddRule={addRule} onDeleteRule={deleteRule} asin={activeAsin} sellerId={sellerId} onApplyPrice={setRecommendedPriceData} repriceConfig={repriceConfig} setRepriceConfig={setRepriceConfig} />;
       case "regions":
         return <RegionalInsights />;
       case "alerts":
