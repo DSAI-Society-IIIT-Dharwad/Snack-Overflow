@@ -1,16 +1,25 @@
 import React from "react";
 import { META } from "../data/data";
-
+import {
+  LayoutDashboard,
+  Search,
+  Users,
+  TrendingUp,
+  Zap,
+  Map,
+  Bell,
+  Settings
+} from "lucide-react";
 
 export default function Sidebar({ currentPage, onNav, alertCount }) {
   const navItems = [
-    { key: "dashboard", icon: "⬛", label: "Dashboard" },
-    { key: "asin", icon: "🔍", label: "ASIN Tracker" },
-    { key: "sellers", icon: "👥", label: "Seller Intel" },
-    { key: "trends", icon: "📈", label: "Price Trends" },
-    { key: "reprice", icon: "⚡", label: "Reprice Engine" },
-    { key: "regions", icon: "🗺️", label: "Regional Insights" },
-    { key: "alerts", icon: "🔔", label: "Alerts Center", badge: alertCount },
+    { key: "dashboard", icon: <LayoutDashboard size={20} />, label: "Dashboard" },
+    { key: "asin", icon: <Search size={20} />, label: "ASIN Tracker" },
+    { key: "sellers", icon: <Users size={20} />, label: "Seller Intel" },
+    { key: "trends", icon: <TrendingUp size={20} />, label: "Price Trends" },
+    { key: "reprice", icon: <Zap size={20} />, label: "Reprice Engine" },
+    { key: "regions", icon: <Map size={20} />, label: "Regional Insights" },
+    { key: "alerts", icon: <Bell size={20} />, label: "Alerts Center", badge: alertCount },
   ];
 
   return (
@@ -40,7 +49,7 @@ export default function Sidebar({ currentPage, onNav, alertCount }) {
         className={`nav-item${currentPage === "settings" ? " active" : ""}`}
         onClick={() => onNav("settings")}
       >
-        <span className="nav-icon">⚙️</span>Settings
+        <span className="nav-icon"><Settings size={20} /></span>Settings
       </div>
 
       <div className="sb-footer">
