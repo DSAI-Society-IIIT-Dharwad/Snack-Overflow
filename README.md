@@ -23,6 +23,16 @@ ASINLytics provides ASIN-level intelligence by continuously scraping seller offe
 - Undercut detection and repricing support through backend analytical endpoints
 - Historical trend visibility for decision-ready pricing actions
 
+## 🖼 Demo / Screenshots
+## 📊 Dashboard Preview
+![Dashboard](dashboard.jfif)
+
+## 🌍 Regional Pricing Insights
+![Regional](regional.jfif)
+
+## 🧠 Seller Intelligence
+![Seller Intelligence](seller_intel.jfif)
+
 ## 🛠 Tech Stack
 
 ### Scraper
@@ -168,14 +178,6 @@ npm run dev
 - Backend flags the undercut event and suggests a safe response band.
 - Frontend highlights alert severity and recommended action.
 
-## 🖼 Demo / Screenshots
-
-Add screenshots here during final demo prep:
-
-![Dashboard Overview](docs/screenshots/dashboard-overview.png)
-![Price Trend Chart](docs/screenshots/price-trend.png)
-![Regional Insights](docs/screenshots/regional-insights.png)
-
 ## 🔮 Future Improvements
 
 - Smart proxy rotation and anti-bot resilience for higher scrape consistency
@@ -185,8 +187,6 @@ Add screenshots here during final demo prep:
 - Event-driven alert delivery (email, webhook, Slack)
 
 ## 👥 Contributors
-
-Auto-detected from git history:
 
 - Damodar Lokapure
 - Neil Tauro
