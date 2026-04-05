@@ -19,11 +19,18 @@ router = APIRouter(prefix="/seller", tags=["Seller Intelligence"])
 # Get seller stats: total, FBA, FBM, new this week
 # =============================================================================
 @router.get("/stats", response_model=SellerStatsResponse)
-async def get_seller_stats(db: Session = Depends(get_db)):
+async def get_seller_stats(
+    asin: str = Query(...),
+    db: Session = Depends(get_db)
+):
     """
     Get summary statistics for all sellers.
     """
-    all_sellers = db.query(CurrentPrices.seller_id, CurrentPrices.seller_name, CurrentPrices.fba_status).all()
+    sellers_query = db.query(CurrentPrices.seller_id, CurrentPrices.seller_name, CurrentPrices.fba_status)
+    if asin:
+        sellers_query = sellers_query.filter(CurrentPrices.asin == asin.strip().upper())
+        
+    all_sellers = sellers_query.all()
 
     total_sellers = len(set(s.seller_id for s in all_sellers if s.seller_id))
 
@@ -35,11 +42,16 @@ async def get_seller_stats(db: Session = Depends(get_db)):
     fbm_sellers = total_sellers - fba_sellers
 
     week_ago = datetime.utcnow() - timedelta(days=7)
-    new_sellers = db.query(
+    
+    new_sellers_query = db.query(
         func.count(distinct(SellerPrices.seller_id))
     ).filter(
         SellerPrices.scraped_at >= week_ago
-    ).scalar() or 0
+    )
+    if asin:
+        new_sellers_query = new_sellers_query.filter(SellerPrices.asin == asin.strip().upper())
+        
+    new_sellers = new_sellers_query.scalar() or 0
 
     return SellerStatsResponse(
         total_sellers=total_sellers,
@@ -57,6 +69,7 @@ async def get_seller_stats(db: Session = Depends(get_db)):
 async def get_seller_directory(
     region: Optional[str] = Query(None),
     fba_status: Optional[str] = Query(None),
+    asin: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):
     """
@@ -76,6 +89,8 @@ async def get_seller_directory(
 
     if fba_status:
         sellers_query = sellers_query.filter(CurrentPrices.fba_status == fba_status.upper())
+    if asin:
+        sellers_query = sellers_query.filter(CurrentPrices.asin == asin.strip().upper())
 
     sellers = sellers_query.all()
 
