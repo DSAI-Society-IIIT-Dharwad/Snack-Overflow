@@ -9,8 +9,12 @@ import { useToast } from "../context/ToastContext";
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
+// This tells the chart to read from your dummy data instead of the backend
 function buildLineData(range) {
   const d = TD[range];
+  
+  if (!d) return { labels: [], datasets: [] };
+  
   return {
     labels: d.labels,
     datasets: [
@@ -40,58 +44,84 @@ function buildLineData(range) {
   };
 }
 
-export default function Dashboard({ sellers, alerts, onNav, onMarkRead, onMarkAllRead, searchQuery }) {
+
+// Add asin and sellerId to the destructuring list here:
+export default function Dashboard({ asin, sellerId, alerts, onNav, onMarkRead, onMarkAllRead, searchQuery }) {
   const [range, setRange] = useState("7d");
   const [sellerFilter, setSellerFilter] = useState("all");
   const toast = useToast();
 
-  const unreadCount = alerts.filter((a) => !a.read).length;
+  const [dashboardData, setDashboardData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
+  // Update the fetch URL to use dynamic template variables 
+  useEffect(() => {
+    // We replace the hardcoded URL with backticks ( ` ) and ${variable} syntax
+    fetch(`http://localhost:8000/dashboard?asin=${asin}&seller_id=${sellerId}`)
+      .then(res => res.json())
+      .then(data => {
+        setDashboardData(data);
+        setIsLoading(false);
+      })
+      .catch(err => {
+        console.error("Failed to fetch dashboard data", err);
+        setIsLoading(false);
+      });
+  }, [asin, sellerId]); // <--- Add asin and sellerId to the dependency array so it refetches if they change!
+
+  // ... rest of the code remains the same
+
+
+  if (isLoading) {
+    return <div className="page-content" style={{ padding: "2rem" }}>Loading dashboard data...</div>;
+  }
+
+  const data = dashboardData || {};
+  const unreadCount = data.undercut_alerts || 0;
+
+  const sellersList = data.seller_comparison || [];
   const filteredSellers = sellerFilter === "all"
-    ? sellers
-    : sellers.filter((s) => s.type === sellerFilter);
+    ? sellersList
+    : sellersList.filter((s) => s.seller_type && s.seller_type.toLowerCase() === sellerFilter.toLowerCase());
 
   const displayedSellers = searchQuery
     ? filteredSellers.filter(
         (s) =>
-          s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          s.region.toLowerCase().includes(searchQuery.toLowerCase())
+          s.seller_name && s.seller_name.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : filteredSellers;
 
-  const minPrice = Math.min(...sellers.map((s) => s.price));
-  const maxPrice = Math.max(...sellers.map((s) => s.price));
+  const validPrices = sellersList.map(s => s.current_price || 0).filter(p => p > 0);
+  const minPrice = validPrices.length ? Math.min(...validPrices) : 0;
+  const maxPrice = validPrices.length ? Math.max(...validPrices) : 0;
 
   return (
     <div className="page-content">
-      {/* KPI Row */}
+            {/* KPI Row */}
       <div className="kpi-row">
         <div className="kpi-card c-green">
-          {/* <div className="kpi-icon">💰</div> */}
           <div className="kpi-label">Lowest Market Price</div>
-          <div className="kpi-val green">₹2,199</div>
-          <div className="kpi-delta dd">▼ 5% from yesterday</div>
+          <div className="kpi-val green">₹{data.lowest_market_price?.toLocaleString("en-IN") || "--"}</div>
+          <div className="kpi-delta dd">▼ {data.lowest_price_change_pct || 0}% vs yesterday</div>
         </div>
         <div className="kpi-card c-blue">
-          {/* <div className="kpi-icon">🎯</div> */}
-          <div className="kpi-label">Recommended Price</div>
-          <div className="kpi-val blue">₹2,249</div>
-          <div className="kpi-delta du">✓ Optimal margin</div>
+          <div className="kpi-label">Your Price</div>
+          <div className="kpi-val blue">₹{data.your_price?.toLocaleString("en-IN") || "--"}</div>
+          <div className="kpi-delta du">Avg Market: ₹{data.market_avg?.toLocaleString("en-IN") || "--"}</div>
         </div>
         <div className="kpi-card c-amber">
-          {/* <div className="kpi-icon">👥</div> */}
           <div className="kpi-label">Active Sellers</div>
-          <div className="kpi-val amber">127</div>
-          <div className="kpi-delta du">↑ 3 new this week</div>
+          <div className="kpi-val amber">{data.active_sellers || 0}</div>
+          <div className="kpi-delta du">↑ {data.new_sellers_this_week || 0} new this week</div>
         </div>
         <div className="kpi-card c-red" style={{ cursor: "pointer" }}
           onClick={() => onNav("alerts")}>
-          {/* <div className="kpi-icon">⚠️</div> */}
           <div className="kpi-label">Undercut Alerts</div>
           <div className="kpi-val red" id="kav">{unreadCount}</div>
           <div className="kpi-delta dd">Click to view</div>
         </div>
       </div>
+
 
       {/* Price Chart + Recommendation */}
       <div className="g2">
@@ -111,7 +141,8 @@ export default function Dashboard({ sellers, alerts, onNav, onMarkRead, onMarkAl
             </div>
           </div>
           <div className="pb">
-            <Line data={buildLineData(range)} options={CHART_OPTIONS} height={190} />
+              <Line data={buildLineData(range)} options={CHART_OPTIONS} height={190} />
+
           </div>
         </div>
 
@@ -165,21 +196,22 @@ export default function Dashboard({ sellers, alerts, onNav, onMarkRead, onMarkAl
               <thead>
                 <tr><th>Seller</th><th>Price</th><th>Type</th><th>Region</th><th>Rel.</th></tr>
               </thead>
-              <tbody id="stbody">
+                            <tbody id="stbody">
                 {displayedSellers.map((s) => {
-                  const pct = maxPrice === minPrice ? 100 : Math.round(((s.price - minPrice) / (maxPrice - minPrice)) * 100);
-                  const isLow = s.price === minPrice;
+                  const sPrice = s.current_price || 0;
+                  const pct = maxPrice === minPrice ? 100 : Math.round(((sPrice - minPrice) / (maxPrice - minPrice)) * 100);
+                  const isLow = sPrice === minPrice && sPrice > 0;
                   return (
-                    <tr key={s.name} style={{ cursor: "pointer" }}>
-                      <td><div className="sn">{s.name}</div><div className="sl">📍 {s.loc}</div></td>
+                    <tr key={s.seller_id} style={{ cursor: "pointer" }}>
+                      <td><div className="sn">{s.seller_name || "Unknown"}</div></td>
                       <td>
                         <div className="pv" style={{ color: isLow ? "var(--green)" : "var(--text)" }}>
-                          ₹{s.price.toLocaleString("en-IN")}
+                          ₹{sPrice.toLocaleString("en-IN")}
                         </div>
                         {isLow && <div style={{ fontSize: "0.6rem", color: "var(--green)", fontFamily: "var(--font-m)" }}>LOWEST</div>}
                       </td>
-                      <td><span className={`tag t-${s.type.toLowerCase()}`}>{s.type}</span></td>
-                      <td style={{ color: "var(--muted2)", fontSize: "0.78rem" }}>{s.region}</td>
+                      <td><span className={`tag t-${(s.seller_type || "FBM").toLowerCase()}`}>{s.seller_type || "FBM"}</span></td>
+                      <td style={{ color: "var(--muted2)", fontSize: "0.78rem" }}>{s.shipping_time || "--"}</td>
                       <td style={{ minWidth: "70px" }}>
                         <div className="pb-bg">
                           <div className="pb-fill" style={{ width: `${100 - pct}%`, background: isLow ? "var(--green)" : "var(--blue)" }}></div>
@@ -189,6 +221,7 @@ export default function Dashboard({ sellers, alerts, onNav, onMarkRead, onMarkAl
                   );
                 })}
               </tbody>
+
             </table>
           </div>
         </div>
