@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.database import get_db
 from sqlalchemy.orm import Session
 from app.models import AsinRegistry, SellerPrices, CurrentPrices, PriceAlerts
-from .routers import reprice, asin_tracker, seller, dashboard, price_trends, regional_insights, alerts
+from .routers import reprice, asin_tracker, seller, dashboard, price_trends, regional_insights, alerts, settings
 
 app = FastAPI()
 
@@ -22,6 +22,7 @@ app.include_router(dashboard.router)
 app.include_router(price_trends.router)
 app.include_router(regional_insights.router)
 app.include_router(alerts.router)
+app.include_router(settings.router)
 
 @app.get("/")
 async def root():

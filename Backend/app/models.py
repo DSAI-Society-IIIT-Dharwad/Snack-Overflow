@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, Boolean, Numeric, ForeignKey, TIMESTAMP, text
+from sqlalchemy import Column, Integer, String, Boolean, Numeric, ForeignKey, TIMESTAMP, text, UniqueConstraint
+from sqlalchemy.dialects.postgresql import UUID
 from .database import Base
 
 
@@ -101,3 +102,29 @@ class AsinTracker(Base):
     is_active = Column(Boolean, server_default="true")
     status = Column(String(20), default="active")  # active, paused, error
     last_scraped = Column(TIMESTAMP(timezone=True))
+
+class Settings(Base):
+    __tablename__ = "settings"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    user_id = Column(
+        UUID(as_uuid=True),
+        nullable=False,
+        unique=True
+    )
+
+    default_asin = Column(String(20))
+    seller_id = Column(String(100))
+    scrape_interval = Column(Integer)
+
+    default_region = Column(String(20))
+
+    alert_email = Column(String(255))
+    high_severity_alerts = Column(Boolean, default=True)
+
+    auto_apply_prices = Column(Boolean, default=False)
+
+    __table_args__ = (
+        UniqueConstraint("user_id", name="unique_user_settings"),
+    )

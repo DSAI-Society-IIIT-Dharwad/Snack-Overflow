@@ -9,18 +9,31 @@ import { useToast } from "../context/ToastContext";
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
-// This tells the chart to read from your dummy data instead of the backend
-function buildLineData(range) {
-  const d = TD[range];
+// Dynamically builds the chart reading from the DashboardResponse model
+function buildLineData(price_history = [], rangeStr = "7d") {
+  if (!price_history || price_history.length === 0) return { labels: [], datasets: [] };
   
-  if (!d) return { labels: [], datasets: [] };
-  
+  let days = 7;
+  if (rangeStr === "30d") days = 30;
+  if (rangeStr === "90d") days = 90;
+
+  // Slice history to the last N days
+  const sliced = price_history.slice(-days);
+
+  const labels = sliced.map(p => {
+    const d = new Date(p.date);
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  });
+
+  const mine = sliced.map(p => p.your_price || null);
+  const market = sliced.map(p => p.market_avg || null);
+
   return {
-    labels: d.labels,
+    labels: labels,
     datasets: [
       {
         label: "Your Price",
-        data: d.mine,
+        data: mine,
         borderColor: "#10e89a",
         backgroundColor: "rgba(16,232,154,0.08)",
         borderWidth: 2,
@@ -28,10 +41,11 @@ function buildLineData(range) {
         tension: 0.4,
         pointRadius: 3,
         pointBackgroundColor: "#10e89a",
+        spanGaps: true
       },
       {
         label: "Market Avg",
-        data: d.market,
+        data: market,
         borderColor: "rgba(59,158,255,0.6)",
         backgroundColor: "transparent",
         borderWidth: 1.5,
@@ -39,6 +53,7 @@ function buildLineData(range) {
         fill: false,
         tension: 0.4,
         pointRadius: 0,
+        spanGaps: true
       },
     ],
   };
@@ -56,8 +71,14 @@ export default function Dashboard({ asin, sellerId, alerts, onNav, onMarkRead, o
 
   // Update the fetch URL to use dynamic template variables 
   useEffect(() => {
-    // We replace the hardcoded URL with backticks ( ` ) and ${variable} syntax
-    fetch(`http://localhost:8000/dashboard/?asin=${asin}`)
+    if (!asin) {
+      setDashboardData(null);
+      setIsLoading(false);
+      return;
+    }
+    
+    setIsLoading(true);
+    fetch(`http://localhost:8000/dashboard/?asin=${asin}&seller_id=${sellerId || ""}`)
       .then(res => {
         if (!res.ok) throw new Error(`HTTP error ${res.status}`);
         return res.json();
@@ -86,14 +107,9 @@ export default function Dashboard({ asin, sellerId, alerts, onNav, onMarkRead, o
   const sellersList = data.seller_comparison || [];
   const filteredSellers = sellerFilter === "all"
     ? sellersList
-    : sellersList.filter((s) => s.seller_type && s.seller_type.toLowerCase() === sellerFilter.toLowerCase());
+    : sellersList.filter((s) => s.fba_status && s.fba_status.toLowerCase() === sellerFilter.toLowerCase());
 
-  const displayedSellers = searchQuery
-    ? filteredSellers.filter(
-        (s) =>
-          s.seller_name && s.seller_name.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : filteredSellers;
+  const displayedSellers = filteredSellers;
 
   const validPrices = sellersList.map(s => s.price || 0).filter(p => p > 0);
   const minPrice = validPrices.length ? Math.min(...validPrices) : 0;
@@ -133,7 +149,7 @@ export default function Dashboard({ asin, sellerId, alerts, onNav, onMarkRead, o
           <div className="ph">
             <div>
               <h3>Market Price Trend</h3>
-              <div className="sub">ASIN B08XYZ2 · SKF 6205 Bearing</div>
+              <div className="sub">{dashboardData?.product_title ? `ASIN ${asin} · ${dashboardData.product_title}` : `ASIN ${asin || "--"}`}</div>
             </div>
             <div className="tabs">
               {["7d", "30d", "90d"].map((r) => (
@@ -145,8 +161,13 @@ export default function Dashboard({ asin, sellerId, alerts, onNav, onMarkRead, o
             </div>
           </div>
           <div className="pb">
-              <Line data={buildLineData(range)} options={CHART_OPTIONS} height={190} />
-
+            {dashboardData?.price_history && dashboardData.price_history.length > 0 ? (
+              <Line data={buildLineData(dashboardData.price_history, range)} options={CHART_OPTIONS} height={190} />
+            ) : (
+              <div style={{ height: "190px", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted2)", fontFamily: "var(--font-m)" }}>
+                -- No Market Data Available --
+              </div>
+            )}
           </div>
         </div>
 
@@ -215,7 +236,7 @@ export default function Dashboard({ asin, sellerId, alerts, onNav, onMarkRead, o
                         {isLow && <div style={{ fontSize: "0.6rem", color: "var(--green)", fontFamily: "var(--font-m)" }}>LOWEST</div>}
                       </td>
                       <td><span className={`tag t-${(s.fba_status || "FBM").toLowerCase()}`}>{s.fba_status || "FBM"}</span></td>
-                      <td style={{ color: "var(--muted2)", fontSize: "0.78rem" }}>{s.shipping_time || "--"}</td>
+                      <td style={{ color: "var(--muted2)", fontSize: "0.78rem" }}>{s.region || "--"}</td>
                       <td style={{ minWidth: "70px" }}>
                         <div className="pb-bg">
                           <div className="pb-fill" style={{ width: `${100 - pct}%`, background: isLow ? "var(--green)" : "var(--blue)" }}></div>

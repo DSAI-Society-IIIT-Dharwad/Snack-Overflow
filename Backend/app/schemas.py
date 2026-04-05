@@ -290,3 +290,31 @@ class AlertsResponse(BaseModel):
     asin: str
     total_active: int = 0    # count of unread alerts
     alerts: List[AlertItem] = []
+
+
+# =============================================================================
+# SETTINGS SCHEMAS
+# =============================================================================
+from uuid import UUID
+
+class SettingsBase(BaseModel):
+    seller_id: str
+    default_asin: Optional[str] = None
+    scrape_interval: Optional[int] = None
+    default_region: Optional[str] = None
+    alert_email: Optional[str] = None
+    high_severity_alerts: Optional[bool] = None
+    auto_apply_prices: Optional[bool] = None
+
+class SettingsCreate(SettingsBase):
+    user_id: UUID
+
+class SettingsUpdate(SettingsBase):
+    pass
+
+class SettingsResponse(SettingsBase):
+    id: int
+    user_id: UUID
+
+    class Config:
+        from_attributes = True

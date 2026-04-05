@@ -14,30 +14,35 @@ router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 # ---------------------------------------------------------------------------
 # State-code → region mapping (Indian states)
 # ---------------------------------------------------------------------------
-_STATE_REGION: dict[str, str] = {
-    # North
-    "DL": "North", "UP": "North", "HR": "North", "PB": "North",
-    "HP": "North", "UK": "North", "JK": "North", "RJ": "North",
-    # South
-    "KA": "South", "TN": "South", "KL": "South", "AP": "South",
-    "TG": "South", "PY": "South",
-    # East
-    "WB": "East", "OR": "East", "BR": "East", "JH": "East",
-    "AS": "East", "NL": "East", "MN": "East", "TR": "East",
-    # West
-    "MH": "West", "GJ": "West", "MP": "West", "CG": "West", "GA": "West",
+_PINCODE_REGION = {
+    # North TN
+    "600001": "North TN",  # Chennai
+    "631001": "North TN",  # Tiruvallur
+    "632001": "North TN",  # Vellore
+
+    # West TN
+    "641001": "West TN",   # Coimbatore
+    "638001": "West TN",   # Erode
+    "636001": "West TN",   # Salem
+
+    # South TN
+    "625001": "South TN",  # Madurai
+    "627001": "South TN",  # Tirunelveli
+    "628001": "South TN",  # Thoothukudi
+
+    # Central TN
+    "620001": "Central TN", # Trichy
+    "621001": "Central TN",
+
+    # South-East TN
+    "630001": "South-East TN", # Sivakasi
 }
 
 
 def _derive_region(location: str | None) -> str | None:
-    """Extract state code from '"City, ST"' and map to region."""
     if not location:
         return None
-    parts = location.rsplit(",", 1)
-    if len(parts) == 2:
-        state_code = parts[1].strip().upper()
-        return _STATE_REGION.get(state_code)
-    return None
+    return _PINCODE_REGION.get(location)
 
 
 # =============================================================================
@@ -47,11 +52,12 @@ def _derive_region(location: str | None) -> str | None:
 @router.get("/", status_code=status.HTTP_200_OK, response_model=DashboardResponse)
 async def get_dashboard(
     asin: str = Query(..., description="Amazon ASIN to analyse"),
-    #seller_id: str = Query(..., description="Your seller ID"),
+    seller_id: str | None = Query(None, description="Your seller ID"),
     db: Session = Depends(get_db),
 ):
     asin = asin.strip().upper()
-    #seller_id = seller_id.strip()
+    if seller_id:
+        seller_id = seller_id.strip()
 
     # ------------------------------------------------------------------
     # 1. Verify ASIN exists
@@ -125,14 +131,29 @@ async def get_dashboard(
     )
 
     # ------------------------------------------------------------------
-    # 6. Your current price — not available without seller_id
+    # 6. Your current price from CurrentPrices (composite key: asin + seller_id)
     # ------------------------------------------------------------------
     your_price: float | None = None
-
-    # ------------------------------------------------------------------
-    # 7. Your latest price change % — not available without seller_id
-    # ------------------------------------------------------------------
     your_change_pct: float | None = None
+    
+    if seller_id:
+        your_row = (
+            db.query(CurrentPrices)
+            .filter(CurrentPrices.asin == asin, CurrentPrices.seller_id == seller_id)
+            .first()
+        )
+        your_price = float(your_row.price) if your_row and your_row.price else None
+
+        # ------------------------------------------------------------------
+        # 7. Your latest price change % from PriceAlerts
+        # ------------------------------------------------------------------
+        your_alert = (
+            db.query(PriceAlerts)
+            .filter(PriceAlerts.asin == asin, PriceAlerts.seller_id == seller_id)
+            .order_by(PriceAlerts.detected_at.desc())
+            .first()
+        )
+        your_change_pct = float(your_alert.change_pct) if your_alert and your_alert.change_pct else None
 
     # ------------------------------------------------------------------
     # 8. Seller comparison table — all sellers for this ASIN
@@ -171,7 +192,7 @@ async def get_dashboard(
                 price=s_price,
                 is_lowest=(s_price == min_price_val) if s_price is not None else False,
                 fba_status=s.fba_status or "FBM",
-                region=_derive_region(s.seller_name),
+                region=_derive_region(s.pincode),
                 location=location_str,
                 relevance_score=max(15, rel) if rel is not None else None,
                 is_buybox=bool(s.is_buybox),
@@ -196,8 +217,26 @@ async def get_dashboard(
         .all()
     )
 
-    # Merge market series (no per-seller price without seller_id)
-    your_map: dict[str, float] = {}
+    # Your own price per day
+    your_daily = []
+    if seller_id:
+        your_daily = (
+            db.query(
+                cast(SellerPrices.scraped_at, Date).label("day"),
+                func.avg(SellerPrices.price).label("your_price"),
+            )
+            .filter(
+                SellerPrices.asin == asin,
+                SellerPrices.seller_id == seller_id,
+                SellerPrices.scraped_at >= ninety_days_ago,
+            )
+            .group_by(cast(SellerPrices.scraped_at, Date))
+            .order_by(cast(SellerPrices.scraped_at, Date))
+            .all()
+        )
+
+    # Merge market series and your series by date
+    your_map = {str(r.day): round(float(r.your_price), 2) for r in your_daily}
     price_history = [
         PriceTrendPoint(
             date=str(r.day),

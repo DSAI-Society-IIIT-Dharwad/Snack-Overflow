@@ -22,8 +22,22 @@ export default function App() {
   const [asins, setAsins] = useState(INITIAL_ASINS);
   const [rules, setRules] = useState(INITIAL_RULES);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeAsin, setActiveAsin] = useState("B001");
-  const [sellerId, setSellerId] = useState("SELLER_12345");
+  const [activeAsin, setActiveAsin] = useState("");
+  const [sellerId, setSellerId] = useState("");
+
+  const DUMMY_USER_ID = "00000000-0000-0000-0000-000000000000";
+
+  React.useEffect(() => {
+    fetch(`http://localhost:8000/settings/${DUMMY_USER_ID}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.id) {
+          if (data.seller_id) setSellerId(data.seller_id);
+          if (data.default_asin) setActiveAsin(data.default_asin);
+        }
+      })
+      .catch(err => console.log("No settings yet"));
+  }, []);
 
   const alertCount = alerts.filter((a) => !a.read).length;
 
