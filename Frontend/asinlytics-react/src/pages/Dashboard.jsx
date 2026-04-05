@@ -316,17 +316,27 @@ export default function Dashboard({ asin, sellerId, alerts, recommendedPriceData
             <button className="btn btn-outline btn-sm" onClick={onMarkAllRead}>Mark All Read</button>
           </div>
           <div className="pb" id="alertsmini">
-            {alerts.slice(0, 4).length ? alerts.slice(0, 4).map((a) => (
-              <div key={a.id} className={`al${a.read ? " read" : ""}`} onClick={() => onMarkRead(a.id)}>
-                <div className="al-icon">{a.icon}</div>
-                <div className="al-body">
-                  <div className="al-title">{a.title}</div>
-                  <div className="al-desc">{a.desc}</div>
-                  <div className="al-time">{a.time}{a.read ? " · Read" : ""}</div>
+            {alerts.slice(0, 4).length ? alerts.slice(0, 4).map((a) => {
+              const ICON_MAP = { undercut: "⚡", spike: "📈", price_drop: "📉", price_change: "⚙️", new_competitor: "👥" };
+              const getTimeAgo = (dStr) => {
+                const d = new Date(dStr); const n = new Date(); const diff = Math.floor((n - d) / 1000);
+                if (diff < 60) return "Just now";
+                if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+                if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+                return `${Math.floor(diff / 86400)}d ago`;
+              };
+              return (
+                <div key={a.id} className={`al${a.read ? " read" : ""}`} onClick={() => onMarkRead(a.id)}>
+                  <div className="al-icon">{ICON_MAP[a.alert_type] || "🔔"}</div>
+                  <div className="al-body">
+                    <div className="al-title">{a.title}</div>
+                    <div className="al-desc">{a.desc}</div>
+                    <div className="al-time">{getTimeAgo(a.detected_at)}{a.read ? " · Read" : ""}</div>
+                  </div>
+                  <span className={`al-sev s${a.sev?.charAt(0) || 'l'}`}>{a.sev?.toUpperCase() || 'LOW'}</span>
                 </div>
-                <span className={`al-sev s${a.sev.charAt(0)}`}>{a.sev.toUpperCase()}</span>
-              </div>
-            )) : <div style={{ textAlign: "center", color: "var(--muted)", padding: "2rem", fontSize: "0.85rem" }}>✓ No alerts</div>}
+              );
+            }) : <div style={{ textAlign: "center", color: "var(--muted)", padding: "2rem", fontSize: "0.85rem" }}>✓ No alerts</div>}
           </div>
         </div>
       </div>

@@ -18,7 +18,7 @@ import Landing from "./pages/Landing";
 export default function App() {
   const [page, setPage] = useState("dashboard");
   const [authed, setAuthed] = useState(false);
-  const [alerts, setAlerts] = useState(INITIAL_ALERTS);
+  const [alerts, setAlerts] = useState([]);
   const [asins, setAsins] = useState(INITIAL_ASINS);
   const [rules, setRules] = useState(INITIAL_RULES);
   const [searchQuery, setSearchQuery] = useState("");
@@ -39,16 +39,55 @@ export default function App() {
         }
       })
       .catch(err => console.log("No settings yet"));
-  }, []);
+
+    if (activeAsin) {
+      fetchAlerts(activeAsin, sellerId);
+    }
+  }, [activeAsin, sellerId]);
+
+  function fetchAlerts(asin, sid) {
+    if (!asin) return;
+    fetch(`http://localhost:8000/alerts/?asin=${asin}&seller_id=${sid || ""}`)
+      .then(res => res.json())
+      .then(data => {
+        // Map backend alerts to frontend structure if necessary
+        // Backend: { alerts: [ { alert_type, title, message, severity, detected_at, is_read } ] }
+        const mapped = (data.alerts || []).map(a => ({
+          id: a.id,
+          title: a.title,
+          desc: a.message,
+          detected_at: a.detected_at, // Keep raw ISO string for relative time calc
+          sev: a.severity,
+          read: a.is_read,
+          alert_type: a.alert_type
+        }));
+        setAlerts(mapped);
+      })
+      .catch(console.error);
+  }
 
   const alertCount = alerts.filter((a) => !a.read).length;
 
   function markRead(id) {
-    setAlerts((prev) => prev.map((a) => a.id === id ? { ...a, read: true } : a));
+    if (id < 0) {
+      // Synthetic alert (like "New Competitor") - just mark local
+      setAlerts((prev) => prev.map((a) => a.id === id ? { ...a, read: true } : a));
+      return;
+    }
+    fetch(`http://localhost:8000/alerts/${id}/read`, { method: 'PATCH' })
+      .then(() => {
+        setAlerts((prev) => prev.map((a) => a.id === id ? { ...a, read: true } : a));
+      })
+      .catch(console.error);
   }
 
   function markAllRead() {
-    setAlerts((prev) => prev.map((a) => ({ ...a, read: true })));
+    if (!activeAsin) return;
+    fetch(`http://localhost:8000/alerts/mark-all-read?asin=${activeAsin}`, { method: 'POST' })
+      .then(() => {
+        setAlerts((prev) => prev.map((a) => ({ ...a, read: true })));
+      })
+      .catch(console.error);
   }
 
   function addAsin(asin) {

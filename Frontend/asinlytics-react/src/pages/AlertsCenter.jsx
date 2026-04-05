@@ -1,10 +1,30 @@
 import React, { useState } from "react";
 
+const ICON_MAP = {
+  undercut: "⚡",
+  spike: "📈",
+  price_drop: "📉",
+  price_change: "⚙️",
+  new_competitor: "👥",
+};
+
 export default function AlertsCenter({ alerts, onMarkRead, onMarkAllRead }) {
   const [filter, setFilter] = useState("all");
 
   const filtered = filter === "all" ? alerts : alerts.filter((a) => a.sev === filter);
-  const unread = alerts.filter((a) => !a.read).length;
+  const unreadCount = alerts.filter((a) => !a.read).length;
+
+  function getTimeAgo(dateStr) {
+    if (!dateStr) return "";
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diff = Math.floor((now - date) / 1000); // seconds
+
+    if (diff < 60) return "Just now";
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    return `${Math.floor(diff / 86400)}d ago`;
+  }
 
   return (
     <div className="page-content">
@@ -12,7 +32,7 @@ export default function AlertsCenter({ alerts, onMarkRead, onMarkAllRead }) {
         <div className="ph">
           <div>
             <h3>Alerts Center</h3>
-            <div className="sub" id="alertpgsub">{unread} active alerts</div>
+            <div className="sub" id="alertpgsub">{unreadCount} active alerts</div>
           </div>
           <div style={{ display: "flex", gap: "0.5rem" }}>
             <div className="tabs" id="alftabs">
@@ -29,15 +49,15 @@ export default function AlertsCenter({ alerts, onMarkRead, onMarkAllRead }) {
         <div className="pb" id="alertspg">
           {filtered.length ? filtered.map((a) => (
             <div key={a.id} className={`al${a.read ? " read" : ""}`} onClick={() => onMarkRead(a.id)}>
-              <div className="al-icon">{a.icon}</div>
+              <div className="al-icon">{ICON_MAP[a.alert_type] || "🔔"}</div>
               <div className="al-body">
                 <div className="al-title">{a.title}</div>
                 <div className="al-desc">{a.desc}</div>
                 <div className="al-time">
-                  {a.time}{a.read ? <> · <span style={{ color: "var(--muted)" }}>Read</span></> : ""}
+                  {getTimeAgo(a.detected_at || a.time)}{a.read ? <> · <span style={{ color: "var(--muted)" }}>Read</span></> : ""}
                 </div>
               </div>
-              <span className={`al-sev s${a.sev.charAt(0)}`}>{a.sev.toUpperCase()}</span>
+              <span className={`al-sev s${a.sev?.charAt(0) || 'l'}`}>{a.sev?.toUpperCase() || 'LOW'}</span>
             </div>
           )) : (
             <div style={{ textAlign: "center", color: "var(--muted)", padding: "2rem", fontSize: "0.85rem" }}>
