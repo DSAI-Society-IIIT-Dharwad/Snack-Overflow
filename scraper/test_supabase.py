@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from supabase import create_client
 
 def test_supabase_connection():
-    load_dotenv(dotenv_path='c:/Users/damod/Desktop/Hackathon/scraper/.env')
+    load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"))
     supabase_url = os.getenv("SUPABASE_URL")
     supabase_key = os.getenv("SUPABASE_KEY")
 
