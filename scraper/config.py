@@ -23,6 +23,18 @@ TN_PINCODES = [
     "625001",  # Madurai
     "620001",  # Tiruchirappalli
     "630001",  # Sivakasi
+    "600020",  # Adyar, Chennai
+    "600040",  # Anna Nagar, Chennai
+    "600100",  # Velachery, Chennai
+    "638001",  # Erode
+    "627001",  # Tirunelveli
+    "636007",  # Salem
+    "613001",  # Thanjavur
+    "614001",  # Pattukkottai
+    "622001",  # Pudukkottai
+    "621301",  # Karur
+    "611001",  # Nagapattinam
+    "605001",  # Puducherry (near TN corridor)
 ]
 
 BEARING_BRANDS = [
