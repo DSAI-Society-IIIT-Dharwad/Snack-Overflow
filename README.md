@@ -30,7 +30,7 @@ ASINLytics provides ASIN-level intelligence by continuously scraping seller offe
 ## 🌍 Regional Pricing Insights
 ![Regional](regional.jfif)
 
-## 🧠 Seller Intelligence
+## 🧠 ASIN Tracker
 ![Seller Intelligence](seller_intel.jfif)
 
 ## 🛠 Tech Stack
