@@ -22,7 +22,7 @@ export default function App() {
   const [asins, setAsins] = useState(INITIAL_ASINS);
   const [rules, setRules] = useState(INITIAL_RULES);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeAsin, setActiveAsin] = useState("B08XYZ2");
+  const [activeAsin, setActiveAsin] = useState("B001");
   const [sellerId, setSellerId] = useState("SELLER_12345");
 
   const alertCount = alerts.filter((a) => !a.read).length;
@@ -101,6 +101,7 @@ return (
           currentPage={page}
           meta={META[page]}
           onSearchChange={setSearchQuery}
+          onAsinSearch={setActiveAsin}
           onNav={setPage}
         />
         {renderPage()}

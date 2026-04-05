@@ -47,11 +47,11 @@ def _derive_region(location: str | None) -> str | None:
 @router.get("/", status_code=status.HTTP_200_OK, response_model=DashboardResponse)
 async def get_dashboard(
     asin: str = Query(..., description="Amazon ASIN to analyse"),
-    seller_id: str = Query(..., description="Your seller ID"),
+    #seller_id: str = Query(..., description="Your seller ID"),
     db: Session = Depends(get_db),
 ):
     asin = asin.strip().upper()
-    seller_id = seller_id.strip()
+    #seller_id = seller_id.strip()
 
     # ------------------------------------------------------------------
     # 1. Verify ASIN exists
@@ -125,25 +125,14 @@ async def get_dashboard(
     )
 
     # ------------------------------------------------------------------
-    # 6. Your current price from CurrentPrices
+    # 6. Your current price — not available without seller_id
     # ------------------------------------------------------------------
-    your_row = (
-        db.query(CurrentPrices)
-        .filter(CurrentPrices.asin == asin, CurrentPrices.seller_id == seller_id)
-        .first()
-    )
-    your_price = float(your_row.price) if your_row and your_row.price else None
+    your_price: float | None = None
 
     # ------------------------------------------------------------------
-    # 7. Your latest price change % from PriceAlerts
+    # 7. Your latest price change % — not available without seller_id
     # ------------------------------------------------------------------
-    your_alert = (
-        db.query(PriceAlerts)
-        .filter(PriceAlerts.asin == asin, PriceAlerts.seller_id == seller_id)
-        .order_by(PriceAlerts.detected_at.desc())
-        .first()
-    )
-    your_change_pct = float(your_alert.change_pct) if your_alert and your_alert.change_pct else None
+    your_change_pct: float | None = None
 
     # ------------------------------------------------------------------
     # 8. Seller comparison table — all sellers for this ASIN
@@ -207,24 +196,8 @@ async def get_dashboard(
         .all()
     )
 
-    # Your own price per day
-    your_daily = (
-        db.query(
-            cast(SellerPrices.scraped_at, Date).label("day"),
-            func.avg(SellerPrices.price).label("your_price"),
-        )
-        .filter(
-            SellerPrices.asin == asin,
-            SellerPrices.seller_id == seller_id,
-            SellerPrices.scraped_at >= ninety_days_ago,
-        )
-        .group_by(cast(SellerPrices.scraped_at, Date))
-        .order_by(cast(SellerPrices.scraped_at, Date))
-        .all()
-    )
-
-    # Merge both series by date
-    your_map = {str(r.day): round(float(r.your_price), 2) for r in your_daily}
+    # Merge market series (no per-seller price without seller_id)
+    your_map: dict[str, float] = {}
     price_history = [
         PriceTrendPoint(
             date=str(r.day),
@@ -239,7 +212,6 @@ async def get_dashboard(
     # ------------------------------------------------------------------
     return DashboardResponse(
         asin=asin,
-        seller_id=seller_id,
         product_title=registry.title,
         last_scraped=last_scraped,
         lowest_market_price=lowest_market_price,

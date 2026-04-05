@@ -2,9 +2,10 @@ import React, { useState } from "react";
 import { SELLERS } from "../data/data";
 import { useToast } from "../context/ToastContext";
 
-export default function Topbar({ currentPage, meta, onSearchChange, onNav }) {
+export default function Topbar({ currentPage, meta, onSearchChange, onAsinSearch, onNav }) {
   const [refreshing, setRefreshing] = useState(false);
   const [lastScrape, setLastScrape] = useState("2 min ago");
+  const [asinInput, setAsinInput] = useState("");
   const toast = useToast();
 
   function doRefresh() {
@@ -40,8 +41,18 @@ export default function Topbar({ currentPage, meta, onSearchChange, onNav }) {
         <input
           className="gsearch"
           id="gsearch"
-          placeholder="Search ASIN"
-          onChange={(e) => onSearchChange(e.target.value)}
+          placeholder="Search ASIN (press Enter)"
+          value={asinInput}
+          onChange={(e) => {
+            setAsinInput(e.target.value);
+            onSearchChange(e.target.value);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              const val = asinInput.trim().toUpperCase();
+              if (val) onAsinSearch(val);
+            }
+          }}
         />
         {/* <button
           className="btn btn-outline"

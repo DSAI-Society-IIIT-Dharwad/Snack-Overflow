@@ -31,7 +31,6 @@ class PriceTrendPoint(BaseModel):
 class PriceTrendsResponse(BaseModel):
     """Full payload returned by GET /price-trends."""
     asin: str
-    seller_id: str
     product_title: Optional[str] = None
     last_scraped: Optional[datetime] = None
     # Stats cards
@@ -60,7 +59,7 @@ class DashboardResponse(BaseModel):
     """Full payload returned by GET /dashboard."""
     # Identity
     asin: str
-    seller_id: str
+    #seller_id: str
     product_title: Optional[str] = None
     last_scraped: Optional[datetime] = None
 
@@ -289,6 +288,5 @@ class AlertItem(BaseModel):
 class AlertsResponse(BaseModel):
     """Full payload returned by GET /alerts."""
     asin: str
-    seller_id: str
     total_active: int = 0    # count of unread alerts
     alerts: List[AlertItem] = []

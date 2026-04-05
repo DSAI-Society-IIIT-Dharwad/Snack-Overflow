@@ -57,14 +57,18 @@ export default function Dashboard({ asin, sellerId, alerts, onNav, onMarkRead, o
   // Update the fetch URL to use dynamic template variables 
   useEffect(() => {
     // We replace the hardcoded URL with backticks ( ` ) and ${variable} syntax
-    fetch(`http://localhost:8000/dashboard?asin=${asin}&seller_id=${sellerId}`)
-      .then(res => res.json())
+    fetch(`http://localhost:8000/dashboard/?asin=${asin}`)
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+        return res.json();
+      })
       .then(data => {
         setDashboardData(data);
         setIsLoading(false);
       })
       .catch(err => {
         console.error("Failed to fetch dashboard data", err);
+        setDashboardData(null);
         setIsLoading(false);
       });
   }, [asin, sellerId]); // <--- Add asin and sellerId to the dependency array so it refetches if they change!
@@ -91,7 +95,7 @@ export default function Dashboard({ asin, sellerId, alerts, onNav, onMarkRead, o
       )
     : filteredSellers;
 
-  const validPrices = sellersList.map(s => s.current_price || 0).filter(p => p > 0);
+  const validPrices = sellersList.map(s => s.price || 0).filter(p => p > 0);
   const minPrice = validPrices.length ? Math.min(...validPrices) : 0;
   const maxPrice = validPrices.length ? Math.max(...validPrices) : 0;
 
@@ -198,7 +202,7 @@ export default function Dashboard({ asin, sellerId, alerts, onNav, onMarkRead, o
               </thead>
                             <tbody id="stbody">
                 {displayedSellers.map((s) => {
-                  const sPrice = s.current_price || 0;
+                  const sPrice = s.price || 0;
                   const pct = maxPrice === minPrice ? 100 : Math.round(((sPrice - minPrice) / (maxPrice - minPrice)) * 100);
                   const isLow = sPrice === minPrice && sPrice > 0;
                   return (
@@ -210,7 +214,7 @@ export default function Dashboard({ asin, sellerId, alerts, onNav, onMarkRead, o
                         </div>
                         {isLow && <div style={{ fontSize: "0.6rem", color: "var(--green)", fontFamily: "var(--font-m)" }}>LOWEST</div>}
                       </td>
-                      <td><span className={`tag t-${(s.seller_type || "FBM").toLowerCase()}`}>{s.seller_type || "FBM"}</span></td>
+                      <td><span className={`tag t-${(s.fba_status || "FBM").toLowerCase()}`}>{s.fba_status || "FBM"}</span></td>
                       <td style={{ color: "var(--muted2)", fontSize: "0.78rem" }}>{s.shipping_time || "--"}</td>
                       <td style={{ minWidth: "70px" }}>
                         <div className="pb-bg">

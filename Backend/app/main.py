@@ -1,10 +1,19 @@
 from fastapi import FastAPI, Depends, status, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from app.database import get_db
 from sqlalchemy.orm import Session
 from app.models import AsinRegistry, SellerPrices, CurrentPrices, PriceAlerts
 from .routers import reprice, asin_tracker, seller, dashboard, price_trends, regional_insights, alerts
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(reprice.router)
 app.include_router(asin_tracker.router)
